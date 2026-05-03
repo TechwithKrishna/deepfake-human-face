@@ -1,148 +1,116 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>DeepShield AI</title>
+🕵️‍♂️ DeepShield AI
+Real vs Fake Face Detection using Deep Learning 🔥
 
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        background: #0f172a;
-        color: #e2e8f0;
-        line-height: 1.6;
-    }
+“If you can’t trust what you see, what can you trust?”
 
-    .container {
-        max-width: 900px;
-        margin: auto;
-        padding: 40px;
-    }
+Deepfakes are evolving fast.
+So I built DeepShield AI — a lightweight deep learning system that detects whether a face is real or AI-generated in seconds.
 
-    h1 {
-        font-size: 40px;
-        color: #38bdf8;
-    }
+🚀 Live System Overview
 
-    h2 {
-        color: #60a5fa;
-        margin-top: 30px;
-    }
+Upload an image → AI analyzes the face → Get instant prediction:
 
-    .tagline {
-        font-size: 18px;
-        color: #94a3b8;
-    }
+🟢 REAL (Authentic Human Face)
+🔴 FAKE (AI-Generated / Deepfake)
+📊 Confidence Score
+⚡ Why this project matters
 
-    .card {
-        background: #1e293b;
-        padding: 20px;
-        border-radius: 12px;
-        margin-top: 20px;
-    }
+Deepfakes are no longer research problems — they are:
 
-    .highlight {
-        color: #22c55e;
-        font-weight: bold;
-    }
+🎭 Identity fraud risks
+📰 Misinformation tools
+🔐 Security threats
 
-    .danger {
-        color: #ef4444;
-        font-weight: bold;
-    }
+DeepShield AI is a step toward restoring visual trust.
 
-    a {
-        color: #38bdf8;
-        text-decoration: none;
-    }
+🧠 How it works (Simple but powerful)
+Image Upload
+   ↓
+MTCNN Face Detection 👤
+   ↓
+Face Cropping & Cleaning ✂️
+   ↓
+ResNet Deep Learning Model 🧠
+   ↓
+Prediction (Real / Fake)
+   ↓
+Confidence Score 📊
+🏗️ Tech Stack
+🐍 Python
+🔥 PyTorch (Deep Learning)
+🧠 ResNet18 (Transfer Learning)
+👤 MTCNN (Face Detection)
+🌐 Streamlit (Web App)
+📦 NumPy, Pillow
+📊 Dataset Used
 
-    code {
-        background: #0f172a;
-        padding: 3px 6px;
-        border-radius: 5px;
-    }
+This project uses the Deepfake Face Images Dataset from Kaggle:
 
-    .footer {
-        margin-top: 40px;
-        font-size: 14px;
-        color: #64748b;
-    }
-</style>
+🔗 Dataset Link:
+https://www.kaggle.com/datasets/kshitizbhargava/deepfake-face-images
 
-</head>
+Includes:
 
-<body>
+Real human face images
+AI-generated / manipulated face images
+Balanced binary classification setup
+🧠 Model Details
+Backbone: ResNet18
+Training Type: Transfer Learning
+Output:
+0 → Fake
+1 → Real
+Activation: Sigmoid
+Input Size: 224 x 224
+📁 Project Structure
+deepfake-detection/
+│
+├── app/                 # Streamlit frontend
+│   └── app.py
+│
+├── src/                 # Core ML pipeline
+│   ├── model.py
+│   ├── predict.py
+│   ├── preprocessing.py
+│
+├── models/             # Trained weights (.pth)
+├── utils/
+├── notebooks/          # Experiments & training
+├── requirements.txt
+└── README.md
+🖥️ Run Locally
+1️⃣ Clone repo
+git clone https://github.com/your-username/deepfake-detection.git
+cd deepfake-detection
+2️⃣ Install dependencies
+pip install -r requirements.txt
+3️⃣ Start app
+streamlit run app/app.py
+📸 Sample Output
+Prediction: FAKE 🔴
+Confidence: 0.93
+💡 Key Highlights
+⚡ Real-time inference using Streamlit
+👤 Robust face detection using MTCNN
+🧠 Transfer learning for strong baseline performance
+📦 Modular, production-style ML structure
+🚀 Lightweight and deployable on CPU
+🚧 Limitations
+Works only on images (no video yet)
+Performance depends on dataset quality
+Needs GPU for large-scale training
+🔮 Future Vision
+🎥 Video deepfake detection (frame-by-frame analysis)
+🔥 Grad-CAM explainability (see why model predicts fake)
+🌐 REST API (FastAPI backend)
+☁️ Cloud deployment (Streamlit Cloud / HuggingFace Spaces)
+🧠 Upgrade to EfficientNet / Xception backbone
+👨‍💻 Built By
 
-<div class="container">
+A deep learning project focused on:
 
-    <h1>🕵️‍♂️ DeepShield AI</h1>
-    <p class="tagline">
-        Real vs Fake Face Detection using Deep Learning
-    </p>
+Computer Vision | AI Safety | Real-world ML Systems
 
-    <div class="card">
-        <p>
-            <b>“If you can’t trust what you see, what can you trust?”</b><br><br>
-            DeepShield AI detects whether a human face is <b>REAL or FAKE</b> using deep learning.
-        </p>
-    </div>
+📜 License
 
-    <h2>🚀 System Output</h2>
-    <div class="card">
-        🟢 <span class="highlight">REAL</span> — Authentic Human Face<br>
-        🔴 <span class="danger">FAKE</span> — AI Generated Face<br>
-        📊 Confidence Score included
-    </div>
-
-    <h2>⚡ Why this matters</h2>
-    <div class="card">
-        Deepfakes are now used in:
-        <ul>
-            <li>🎭 Identity fraud</li>
-            <li>📰 Misinformation</li>
-            <li>🔐 Security threats</li>
-        </ul>
-        This system helps restore visual trust.
-    </div>
-
-    <h2>🧠 Pipeline</h2>
-    <div class="card">
-        Image Upload → MTCNN Face Detection → Cropping → ResNet Model → Prediction
-    </div>
-
-    <h2>🏗️ Tech Stack</h2>
-    <div class="card">
-        Python • PyTorch • ResNet18 • MTCNN • Streamlit
-    </div>
-
-    <h2>📊 Dataset</h2>
-    <div class="card">
-        Deepfake Face Images Dataset from Kaggle:<br><br>
-        🔗 <a href="https://www.kaggle.com/datasets/kshitizbhargava/deepfake-face-images" target="_blank">
-        https://www.kaggle.com/datasets/kshitizbhargava/deepfake-face-images
-        </a>
-    </div>
-
-    <h2>🖥️ Run Project</h2>
-    <div class="card">
-        <code>git clone repo-url</code><br>
-        <code>pip install -r requirements.txt</code><br>
-        <code>streamlit run app/app.py</code>
-    </div>
-
-    <h2>🔮 Future Work</h2>
-    <div class="card">
-        🎥 Video deepfake detection<br>
-        🔥 Grad-CAM explainability<br>
-        ☁️ Cloud deployment<br>
-        🧠 Better models (EfficientNet / Xception)
-    </div>
-
-    <div class="footer">
-        Built for AI Safety • Computer Vision • Deep Learning
-    </div>
-
-</div>
-
-</body>
-</html>
+For educational and research use only.
