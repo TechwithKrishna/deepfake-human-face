@@ -40,15 +40,56 @@ def load_model():
             "Make sure 'deepfake_resnet.pth' is in the same folder as app.py."
         )
 
+    checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
+
+    # Support checkpoints saved as {"state_dict": ...} or {"model_state_dict": ...}
+    state_dict = checkpoint
+    if isinstance(checkpoint, dict):
+        for key in ("model_state_dict", "state_dict"):
+            if key in checkpoint:
+                state_dict = checkpoint[key]
+                break
+
+    # Remove "module." prefix if the model was saved from DataParallel
+    state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
+
     model = models.resnet18(weights=None)
-    model.fc = torch.nn.Linear(model.fc.in_features, 1)
+    model.fc = build_head(state_dict)
 
-    state_dict = torch.load(MODEL_PATH, map_location=DEVICE)
     model.load_state_dict(state_dict)
-
     model.to(DEVICE)
     model.eval()
     return model
+
+
+def build_head(state_dict):
+    """Rebuild the final classifier layer(s) to match the saved weights."""
+    # Single linear layer: fc.weight / fc.bias
+    if "fc.weight" in state_dict:
+        out_f, in_f = state_dict["fc.weight"].shape
+        return torch.nn.Linear(in_f, out_f)
+
+    # Sequential head: fc.0.weight, fc.3.weight, fc.6.weight, ...
+    linear_idx = sorted(
+        {
+            int(k.split(".")[1])
+            for k in state_dict
+            if k.startswith("fc.") and k.endswith(".weight")
+        }
+    )
+    if not linear_idx:
+        raise ValueError("Could not find classifier weights (fc.*) in the model file.")
+
+    layers = []
+    for pos in range(linear_idx[-1] + 1):
+        if pos in linear_idx:
+            out_f, in_f = state_dict[f"fc.{pos}.weight"].shape
+            layers.append(torch.nn.Linear(in_f, out_f))
+        elif layers and isinstance(layers[-1], torch.nn.Linear):
+            layers.append(torch.nn.ReLU())
+        else:
+            layers.append(torch.nn.Dropout(0.3))
+    return torch.nn.Sequential(*layers)
 
 
 # -----------------------
@@ -105,7 +146,12 @@ def predict(image: Image.Image, model, mtcnn):
 
     with torch.no_grad():
         output = model(tensor)
-        prob_real = torch.sigmoid(output).item()
+        if output.numel() == 1:
+            # Single logit: sigmoid gives P(Real)
+            prob_real = torch.sigmoid(output).item()
+        else:
+            # Two logits: index 0 = Fake, index 1 = Real
+            prob_real = torch.softmax(output, dim=1)[0, 1].item()
 
     label = "Real" if prob_real >= 0.5 else "Fake"
     confidence = prob_real if label == "Real" else 1 - prob_real
