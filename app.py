@@ -1,15 +1,20 @@
+import time
+from pathlib import Path
+
 import streamlit as st
 import torch
-import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 from facenet_pytorch import MTCNN
 import torchvision.transforms as transforms
 import torchvision.models as models
 
+st.set_page_config(page_title="Deepfake Detection System", page_icon="🕵️")
+
 # -----------------------
-# Device
+# Device and model path
 # -----------------------
 device = torch.device("cpu")
+MODEL_PATH = Path(__file__).resolve().parent / "deepfake_resnet.pth"
 
 # -----------------------
 # MTCNN Face Detector
@@ -18,25 +23,29 @@ device = torch.device("cpu")
 def get_mtcnn():
     return MTCNN(keep_all=False, device=device)
 
-mtcnn = get_mtcnn()
-
 # -----------------------
 # Load Model
 # -----------------------
 @st.cache_resource
 def load_model():
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"Model file not found at {MODEL_PATH}. "
+            "Keep 'deepfake_resnet.pth' in the same folder as app.py."
+        )
     model = models.resnet18(weights=None)
     model.fc = torch.nn.Linear(model.fc.in_features, 1)
-
-    model.load_state_dict(
-        torch.load(r"C:\Users\MAHESH KUMAR\Desktop\Intern projects\Deepfake model\Model\deepfake_resnet.pth", map_location=device)
-    )
-
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
     model.to(device)
     model.eval()
     return model
 
-model = load_model()
+try:
+    mtcnn = get_mtcnn()
+    model = load_model()
+except Exception as e:
+    st.error(f"Could not load the model: {e}")
+    st.stop()
 
 # -----------------------
 # Image Transform (ResNet standard)
@@ -56,57 +65,62 @@ transform = transforms.Compose([
 # -----------------------
 def detect_face(image: Image.Image):
     boxes, _ = mtcnn.detect(image)
-
-    if boxes is None:
+    if boxes is None or len(boxes) == 0:
         return None
 
-    x1, y1, x2, y2 = map(int, boxes[0])
+    w, h = image.size
+    x1, y1, x2, y2 = boxes[0]
+    x1, y1 = max(0, int(x1)), max(0, int(y1))
+    x2, y2 = min(w, int(x2)), min(h, int(y2))
+    if x2 <= x1 or y2 <= y1:
+        return None
     return image.crop((x1, y1, x2, y2))
 
 # -----------------------
-# Prediction
-# 0 = Fake, 1 = Real
+# Prediction (0 = Fake, 1 = Real)
 # -----------------------
 def predict(image: Image.Image):
+    start = time.perf_counter()
     face = detect_face(image)
-
     if face is None:
-        return "No face detected", 0.0
+        return None, 0.0, time.perf_counter() - start
 
     tensor = transform(face).unsqueeze(0).to(device)
-
     with torch.no_grad():
-        output = model(tensor)
-        prob_real = torch.sigmoid(output).item()
+        prob_real = torch.sigmoid(model(tensor)).item()
 
     label = "Real" if prob_real >= 0.5 else "Fake"
     confidence = prob_real if label == "Real" else 1 - prob_real
-
-    return label, confidence
+    return label, confidence, time.perf_counter() - start
 
 # -----------------------
 # UI
 # -----------------------
 st.title("🕵️ Deepfake Detection System")
+st.caption("Upload a clear, front-facing photo of a face.")
 
-uploaded_file = st.file_uploader(
-    "Upload an image",
-    type=["jpg", "jpeg", "png"]
-)
+uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file:
-    image = Image.open(uploaded_file).convert("RGB")
+    try:
+        image = ImageOps.exif_transpose(Image.open(uploaded_file)).convert("RGB")
+    except Exception:
+        st.error("Could not read this image. Please upload a valid JPG or PNG.")
+        st.stop()
+
     st.image(image, caption="Uploaded Image", use_container_width=True)
 
     if st.button("Analyze"):
-        label, confidence = predict(image)
+        with st.spinner("Analyzing..."):
+            label, confidence, elapsed = predict(image)
 
-        st.subheader(f"Result: {label}")
-        st.write(f"Confidence: {confidence:.2f}")
-
-        if label == "Fake":
-            st.error("⚠️ This image is likely a deepfake.")
-        elif label == "Real":
-            st.success("✅ This image appears real.")
+        if label is None:
+            st.warning("No face detected. Please upload a clear, front-facing photo.")
         else:
-            st.warning("No face detected.")
+            st.subheader(f"Result: {label}")
+            st.write(f"Confidence: {confidence:.2%}")
+            st.caption(f"Inference time: {elapsed * 1000:.0f} ms")
+            if label == "Fake":
+                st.error("⚠️ This image is likely a deepfake.")
+            else:
+                st.success("✅ This image appears real.")
